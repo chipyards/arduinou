@@ -100,13 +100,18 @@ void (*effects[])() = {
 
 
 void setup() {
-  // Serial.begin(115200);
+  Serial.begin(115200);
+  //Serial.println(F("Hello c'est imposant"));
+
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(Halogen);
   FastLED.setBrightness(brightness);
   FastLED.setDither(DISABLE_DITHER);
 
-  //changer cette palette pour avoir des effets super sympas, comme un feu sous l'océan avec OceanColors_p
+  // copier la palette de flash vers RAM
   Pal = LavaColors_p;
+  // ce n'est pas trivial : cf colorutils.h de FastLED
+  // CRGBPalette16& operator=( const TProgmemRGBPalette16& rhs)
+
 }
 
 void loop() {
@@ -129,9 +134,21 @@ void changeAnimation() {
     oldValue = newValue;
     currentEffect = newValue;
     wipeMatrices();
-    if   ( currentEffect & 1 )
-         Pal = LavaColors_p;  // bof
-    else Pal = OceanColors_p;
+    //if   ( currentEffect & 1 )
+    //     Pal = LavaColors_p;  // bof
+    //else Pal = OceanColors_p;
+
+    // afficher la palette : elle est un array de 16 uint32 contenant index, R, G, B
+    Serial.println(F("Pal:"));
+    CRGB couleur;
+    for ( uint8_t i = 0; i < 16; ++i ) {
+      couleur = Pal.entries[i];
+      Serial.print( couleur.r, HEX ); Serial.write(' ');
+      Serial.print( couleur.g, HEX ); Serial.write(' ');
+      Serial.println( couleur.b, HEX );
+    }
+      
+    //  {  Pal[i] ); }
   }
 }
 
