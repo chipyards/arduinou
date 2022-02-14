@@ -418,7 +418,7 @@ void screenscale( accum88 a, byte N, byte& screen, byte& screenerr) {
 void plot88( byte x, byte y, CRGB& color) {
   byte ix = scale8( x, MODEL_WIDTH);
   byte iy = scale8( y, MODEL_HEIGHT);
-  CRGB& px = leds[XY(ix, iy, false, false)];
+  CRGB& px = leds[XY(ix, iy, true, true)];  // was "false, false"
   px = color;
 }
 
@@ -466,11 +466,11 @@ void Dot::Draw() {
                    dim8_video( scale8( scale8( color.g, ye), xe)), 
                    dim8_video( scale8( scale8( color.b, ye), xe))
                    );
-
-  leds[XY(ix, iy, true, false)] += c00;
-  leds[XY(ix, iy + 1, true, false)] += c01;
-  leds[XY(ix + 1, iy, true, false)] += c10;
-  leds[XY(ix + 1, iy + 1, true, false)] += c11;
+// bug fix by JLN 2022-02-14 - was "true, false", and iy was overflowing
+  leds[XY(ix, iy, true, true)] += c00;
+  leds[XY(ix, iy + 1, true, true)] += c01;
+  leds[XY(ix + 1, iy, true, true)] += c10;
+  leds[XY(ix + 1, iy + 1, true, true)] += c11;
 }
 
 void Dot::Move() {

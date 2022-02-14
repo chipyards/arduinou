@@ -6,7 +6,8 @@
  */
 
 /* 
-Le programme utilise leds[], un frame buffer 1D de 128 pixels de 32 bits, le ruabn en zig-zag forme une matrice de 16 x 8
+Le programme utilise leds[], un frame buffer 1D de 128 pixels de 32 bits, le ruban en zig-zag forme une matrice de 16 x 8
+La fonction XY(x,y) rend un index sur leds[], lineaire sur le ruban.
 Son contenu est emis vers le ruban par FastLED.show(), appele par chaque effet sauf fireworks qui utilise LEDS.show();
 (#define LEDS FastLED : that's how we're screwed !!)
  
@@ -119,6 +120,50 @@ void loop() {
 
   changeAnimation();
   changeBrightness();
+
+  // debug
+  static byte oldr = 1;
+  byte r = Pal.entries[0].r;
+  if  ( r != oldr ) {
+    oldr = r;
+    Serial.print(F("AArgh !!!!!!!!!!!!!!! ")); Serial.println( r, HEX );
+  }
+  // dialog
+  int c = Serial.read();
+  if  ( c >= ' ' ) {
+
+    switch(c) {
+    case 'a':
+      // var static
+      Serial.print("&oldr\t ");          Serial.println( (uint16_t)(&oldr), HEX );
+      // scalar & arrays
+      Serial.print("heat\t ");           Serial.println( (uint16_t)(heat), HEX );
+      Serial.print("&x\t ");             Serial.println( (uint16_t)(&x), HEX );
+      Serial.print("&overr.\t ");        Serial.println( (uint16_t)(&overrun), HEX );
+      Serial.print("&curr.E\t ");        Serial.println( (uint16_t)(&currentEffect), HEX );
+      Serial.print("leds\t ");           Serial.println( (uint16_t)(leds), HEX );
+      // obects
+      Serial.print("&Pal\t ");           Serial.println( (uint16_t)(&Pal), HEX );
+      Serial.print("&gDot\t ");          Serial.println( (uint16_t)(&gDot), HEX );
+      Serial.print("gSparks\t ");        Serial.println( (uint16_t)(gSparks), HEX );
+      // stack
+      Serial.print("&r\t ");             Serial.println( (uint16_t)(&r), HEX );
+    break;
+    case 'p':
+      // afficher la palette : elle est un array de CRGB contenant R, G, B
+      Serial.println(F("Pal ------ :"));
+      CRGB couleur;
+      for ( uint8_t i = 0; i < 16; ++i ) {
+        couleur = Pal.entries[i];
+        Serial.print( couleur.r, HEX ); Serial.write(' ');
+        Serial.print( couleur.g, HEX ); Serial.write(' ');
+        Serial.println( couleur.b, HEX );
+      }
+    break;
+    default: Serial.println( c, HEX );
+    }
+    
+  }
 }
 
 /*********************************************************************************************************
@@ -135,21 +180,9 @@ void changeAnimation() {
     currentEffect = newValue;
     wipeMatrices();
     //if   ( currentEffect & 1 )
-    //     Pal = LavaColors_p;  // bof
+    //     Pal = LavaColors_p;
     //else Pal = OceanColors_p;
-
-    // afficher la palette : elle est un array de 16 uint32 contenant index, R, G, B
-    Serial.println(F("Pal:"));
-    CRGB couleur;
-    for ( uint8_t i = 0; i < 16; ++i ) {
-      couleur = Pal.entries[i];
-      Serial.print( couleur.r, HEX ); Serial.write(' ');
-      Serial.print( couleur.g, HEX ); Serial.write(' ');
-      Serial.println( couleur.b, HEX );
     }
-      
-    //  {  Pal[i] ); }
-  }
 }
 
 void changeBrightness() {
@@ -437,7 +470,11 @@ uint16_t XY(uint8_t x, uint8_t y, bool wrapX, bool wrapY) {
   if (x%2 == 0) {
     y = (kMatrixHeight-1) - y;
   }
-
+// debug
+if  ( ( (x * kMatrixHeight) + y ) >= 128 ) {
+  Serial.print(F("Ouuurghh XY "));
+  Serial.print( x ); Serial.write(':'); Serial.println( y );
+}
   return (x * kMatrixHeight) + y;
 }
 
@@ -478,7 +515,7 @@ void screenscale( accum88 a, byte N, byte& screen, byte& screenerr) {
 void plot88( byte x, byte y, CRGB& color) {
   byte ix = scale8( x, MODEL_WIDTH);
   byte iy = scale8( y, MODEL_HEIGHT);
-  CRGB& px = leds[XY(ix, iy, false, false)];
+  CRGB& px = leds[XY(ix, iy, true, true)];  // was false false
   px = color;
 }
 
@@ -527,10 +564,10 @@ void Dot::Draw() {
                    dim8_video( scale8( scale8( color.b, ye), xe))
                    );
 
-  leds[XY(ix, iy, true, false)] += c00;
-  leds[XY(ix, iy + 1, true, false)] += c01;
-  leds[XY(ix + 1, iy, true, false)] += c10;
-  leds[XY(ix + 1, iy + 1, true, false)] += c11;
+  leds[XY(ix, iy, true, true)] += c00;    // all was true, false
+  leds[XY(ix, iy + 1, true, true)] += c01;
+  leds[XY(ix + 1, iy, true, true)] += c10;
+  leds[XY(ix + 1, iy + 1, true, true)] += c11;
 }
 
 void Dot::Move() {
