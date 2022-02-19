@@ -19,7 +19,7 @@ https://github.com/FastLED/FastLED/wiki/Overview
    - Le template WS2812Controller800Khz va heriter du template ClocklessController, en lui passant
      en plus 3 valeurs de timing 250ns, 625ns, 375ns (cf ligne 474 de chipsets.h)
      representees par 2*FMUL, 5*FMUL, 3*FMUL, car l'unite de temps est 125 ns (ref clock = 8 MHz)
-     et les tempo sont affectees d'un multiplicateur FMUL pour freq F_CPU multiple de 8MHz
+     et les tempo sont affectees d'un multiplicateur FMUL pour freq F_CPU multiple de 8MHz.
    - le template ClocklessController est dependant de la plateforme, il est defini dans:
 	- clockless_trinket.h pour AVR
 	- clockless_arm_stm32.h pour cortex M3
@@ -41,55 +41,112 @@ https://github.com/FastLED/FastLED/wiki/Overview
 	  qui se trouve a l'adresse 0xE0001004
 */
 
+/* note sur le signal vu a l'oscillo a la sortie de l'AVR:
+   - periode 1250ns constante
+   - pulse courte 250ns (la spec dit 400ns +- 150, on est au min)
+   - pulse longue 875ns (la spec dit 850ns +- 150, on est bon)
+   a la sortie d'une des LEDs:
+   - pulse courte 315ns (la spec dit 400ns +- 150, on est bon )
+   - pulse longue 660ns (la spec dit 850ns +- 150, on est bon )
+   
+ */
 #include <FastLED.h>
 
-#define NUM_LEDS 128
+#define NUM_LEDS 4
 #define LED_PIN 6 // D6
 
-CRGB leds[NUM_LEDS];
+/// global storage ///
+
+// LEDS
+CRGB leds[NUM_LEDS];		// frame buffer
+
+// intergral joysticks
+const int loop_frequency = 20;  // should be a divider of 1000
+const int loop_delay = 1000 / loop_frequency; // approximately
+int centerX, centerY;
+int paramX = 128, paramY = 128;	// valeurs integrees
+const int deadspan = 100;
+const int paramin = 0;   	// to be adjusted according to application needs
+const int paramax = 255;	// "	"
+// integration rate : at each iteration of the main loop,
+// the joystick deviation divided by this number is added to the parameter.
+// from 0 to paramax, it takes (rate_div*paramax)/(loop_frequency*joydev) seconds
+// example : with main loop at 20 Hz (50 ms), rate_div = 32, paramax = 255, joydev = 412 :
+// it takes 0.99 s to reach paramax from 0
+const int rate_div = 64;
+
 
 void setup() {
   Serial.begin(115200);
+// LEDs
   FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setDither(DISABLE_DITHER);
-  FastLED.setBrightness(12);
+  FastLED.setBrightness(69);
+// on va utiliser le plotter pour observer les variables pilotees par joystick
+// plot labels (Note : keep the AVR reset while starting the plotter)
+  pinMode( 13, OUTPUT );	// board LED
+  Serial.println("paramX paramY refPulse");
+  centerX = analogRead(A0);
+  centerY = analogRead(A1);
+}
 
+// a function to remove the deadband
+int killdead( int v ) {
+  if  ( v >= 0 ) {
+      v -= deadspan;
+      if  ( v < 0 ) v = 0;  
+      }
+  else {
+      v += deadspan;
+      if  ( v > 0 ) v = 0;  
+      }
+return v;
+}
+
+// traiter l'acquisition joystick
+void joyproc() {
+// read the inputs
+  int joyX = analogRead(A0) - centerX;
+  int joyY = analogRead(A1) - centerY;
+  joyX = killdead( joyX );
+  joyY = killdead( joyY );  
+// integrate
+  paramX += ( joyX / rate_div );
+  paramY += ( joyY / rate_div );
+// bound
+  paramX = constrain( paramX, paramin, paramax );
+  paramY = constrain( paramY, paramin, paramax );
+// limit alarm
+  if  ( ( paramX == paramin ) || ( paramX == paramax ) ||
+        ( paramY == paramin ) || ( paramY == paramax )
+      ) digitalWrite( 13, 1 );
+  else digitalWrite( 13, 0 );
+// plot  
+  static int count = 0;
+  // Note : the IDE plotter X range is 500 samples (fixed)
+  // Serial.print( joyX );   Serial.print("  ");
+  // Serial.print( joyY );  Serial.print("  ");
+  Serial.print( paramX );   Serial.print("  ");
+  Serial.print( paramY );   Serial.print("  ");
+  // print also a reference pulse to keep the Y autoscale quiet
+  if  ( count == 0 )
+      Serial.println( 0 );
+  else if ( count == 1 )
+      Serial.println( 255 );
+  else
+      Serial.println( 0 );
+  count = count + 1;
+  if  ( count > 495 ) count = 0;  // a little less than the full plotter X range
 }
 
 void loop() {
-/* blink 2 LEDs *
-leds[0] = CRGB::Yellow; 
-FastLED.show(); delay(250); 
-leds[3] = CRGB::Green; 
-FastLED.show(); delay(250); 
-leds[0] = CRGB::Blue; 
-FastLED.show(); delay(250); 
-leds[3] = CRGB::Red; 
-FastLED.show(); delay(250); 
-//*/
-
-/* scroll along all LEDs, monochrome *
-for ( int i = 0; i < NUM_LEDS; ++i )
-  {
-   leds[i] = 0;
-   leds[(i+1)%NUM_LEDS] = CRGB::White;;
-   FastLED.show(); delay(10);
-  }
-//*/
-
-/* scroll along all LEDs, rainbow */
-for ( int i = 0; i < NUM_LEDS; ++i )
-  {
-   leds[i] = 0;
-   leds[(i+1)%NUM_LEDS] = CHSV(0,255,255);
-   leds[(i+2)%NUM_LEDS] = CHSV(36,255,255);;
-   leds[(i+3)%NUM_LEDS] = CHSV(73,255,255);
-   leds[(i+4)%NUM_LEDS] = CHSV(109,255,255);
-   leds[(i+5)%NUM_LEDS] = CHSV(145,255,255);
-   leds[(i+6)%NUM_LEDS] = CHSV(182,255,255);
-   leds[(i+7)%NUM_LEDS] = CHSV(218,255,255);
-   FastLED.show(); delay(100);
-  }
-//*/
-
+// joystick
+joyproc();
+// LEDs
+   leds[0] = CHSV(paramX,paramY,255);
+   leds[1] = CHSV(paramX,paramY,192);
+   leds[2] = CHSV(paramX,paramY,128);
+   leds[3] = CHSV(paramX,paramY,64);
+FastLED.show();
+delay(loop_delay);        // approximate servo loop period (ms)
 }
