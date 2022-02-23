@@ -120,50 +120,6 @@ void loop() {
 
   changeAnimation();
   changeBrightness();
-
-  // debug
-  static byte oldr = 1;
-  byte r = Pal.entries[0].r;
-  if  ( r != oldr ) {
-    oldr = r;
-    Serial.print(F("AArgh !!!!!!!!!!!!!!! ")); Serial.println( r, HEX );
-  }
-  // dialog
-  int c = Serial.read();
-  if  ( c >= ' ' ) {
-
-    switch(c) {
-    case 'a':
-      // var static
-      Serial.print("&oldr\t ");          Serial.println( (uint16_t)(&oldr), HEX );
-      // scalar & arrays
-      Serial.print("heat\t ");           Serial.println( (uint16_t)(heat), HEX );
-      Serial.print("&x\t ");             Serial.println( (uint16_t)(&x), HEX );
-      Serial.print("&overr.\t ");        Serial.println( (uint16_t)(&overrun), HEX );
-      Serial.print("&curr.E\t ");        Serial.println( (uint16_t)(&currentEffect), HEX );
-      Serial.print("leds\t ");           Serial.println( (uint16_t)(leds), HEX );
-      // obects
-      Serial.print("&Pal\t ");           Serial.println( (uint16_t)(&Pal), HEX );
-      Serial.print("&gDot\t ");          Serial.println( (uint16_t)(&gDot), HEX );
-      Serial.print("gSparks\t ");        Serial.println( (uint16_t)(gSparks), HEX );
-      // stack
-      Serial.print("&r\t ");             Serial.println( (uint16_t)(&r), HEX );
-    break;
-    case 'p':
-      // afficher la palette : elle est un array de CRGB contenant R, G, B
-      Serial.println(F("Pal ------ :"));
-      CRGB couleur;
-      for ( uint8_t i = 0; i < 16; ++i ) {
-        couleur = Pal.entries[i];
-        Serial.print( couleur.r, HEX ); Serial.write(' ');
-        Serial.print( couleur.g, HEX ); Serial.write(' ');
-        Serial.println( couleur.b, HEX );
-      }
-    break;
-    default: Serial.println( c, HEX );
-    }
-    
-  }
 }
 
 /*********************************************************************************************************
@@ -207,7 +163,7 @@ void xyTester() {
   static uint8_t y=0;
   static uint8_t hue = 0;
   
-  leds[XY(x, y, false, false)] = CHSV(hue, 255, 255);
+  leds[XY(x, y)] = CHSV(hue, 255, 255);
   FastLED.show();
   FastLED.delay(20);
 
@@ -238,7 +194,7 @@ void DrawOneFrame( byte startHue8, int8_t yHueDelta8, int8_t xHueDelta8) {
     byte pixelHue = lineStartHue;      
     for( byte x = 0; x < kMatrixWidth; x++) {
       pixelHue += xHueDelta8;
-      leds[XY(x, y, true, true)]  = CHSV( pixelHue, 255, 255);
+      leds[XY(x, y)]  = CHSV( pixelHue, 255, 255);
     }
   }
 }
@@ -389,15 +345,15 @@ void firepit() {
   // It could be random pixels or anything else as well.
   for (uint8_t x = 0; x < kMatrixWidth; x++) {
     // draw
-    leds[XY(x, kMatrixHeight-1, false, false)] = ColorFromPalette( Pal, noise[x][0]);
+    leds[XY(x, kMatrixHeight-1)] = ColorFromPalette( Pal, noise[x][0]);
     // and fill the lowest line of the heatmap, too
-    heat[XY(x, kMatrixHeight-1, false, false)] = noise[x][0];
+    heat[XY(x, kMatrixHeight-1)] = noise[x][0];
   }
 
   // Copy the heatmap one line up for the scrolling.
   for (uint8_t y = 0; y < kMatrixHeight - 1; y++) {
     for (uint8_t x = 0; x < kMatrixWidth; x++) {
-      heat[XY(x, y, false, false)] = heat[XY(x, y + 1, false, false)];
+      heat[XY(x, y)] = heat[XY(x, y + 1)];
     }
   }
 
@@ -419,14 +375,14 @@ void firepit() {
       dim = 255 - dim;
 
       // here happens the scaling of the heatmap
-      heat[XY(x, y, false, false)] = scale8(heat[XY(x, y, false, false)] , dim);
+      heat[XY(x, y)] = scale8(heat[XY(x, y)] , dim);
     }
   }
 
   // Now just map the colors based on the heatmap.
   for (uint8_t y = 0; y < kMatrixHeight - 1; y++) {
     for (uint8_t x = 0; x < kMatrixWidth; x++) {
-      leds[XY(x, y, false, false)] = ColorFromPalette( Pal, heat[XY(x, y, false, false)]);
+      leds[XY(x, y)] = ColorFromPalette( Pal, heat[XY(x, y)]);
     }
   }
 
@@ -452,29 +408,18 @@ void nothing() {
  * Helping functions
  */
 //[0;0] is ont top-left-hand corner
-uint16_t XY(uint8_t x, uint8_t y, bool wrapX, bool wrapY) {
-  const uint8_t matrixMaxX = kMatrixWidth - 1;
-  const uint8_t matrixMaxY = kMatrixHeight - 1;
+uint16_t XY( uint8_t x, uint8_t y ) {
 
   //comment this line to put [0;0] on bottom-left-hand corner.
   //y = (kMatrixHeight-1) - y;
   
-  if (wrapX == true) {
-    while(x > matrixMaxX) x -= kMatrixWidth;
-  }
-  if (wrapY == true) {
-    while(y > matrixMaxY) y -= kMatrixHeight;
-  }
+  x %= kMatrixWidth;
+  y %= kMatrixHeight;
 
   //uncomment if LEDs are arranged in zigzag
   if (x%2 == 0) {
     y = (kMatrixHeight-1) - y;
   }
-// debug
-if  ( ( (x * kMatrixHeight) + y ) >= 128 ) {
-  Serial.print(F("Ouuurghh XY "));
-  Serial.print( x ); Serial.write(':'); Serial.println( y );
-}
   return (x * kMatrixHeight) + y;
 }
 
@@ -484,7 +429,7 @@ template <uint32_t N> void showSprite(const Sprite<N> &sprite) {
     for (uint8_t x=0; x<sprite.w; x++) {
       uint8_t nx = sprite.x+x;
       uint8_t ny = sprite.y+y;
-      leds[XY(nx, ny, true, false)] = CRGB(sprite.data[x+(y*sprite.w)]);
+      leds[XY(nx, ny)] = CRGB(sprite.data[x+(y*sprite.w)]);
     }
   }
   FastLED.show();
@@ -515,7 +460,7 @@ void screenscale( accum88 a, byte N, byte& screen, byte& screenerr) {
 void plot88( byte x, byte y, CRGB& color) {
   byte ix = scale8( x, MODEL_WIDTH);
   byte iy = scale8( y, MODEL_HEIGHT);
-  CRGB& px = leds[XY(ix, iy, true, true)];  // was false false
+  CRGB& px = leds[XY(ix, iy)];  // was false false
   px = color;
 }
 
@@ -564,10 +509,10 @@ void Dot::Draw() {
                    dim8_video( scale8( scale8( color.b, ye), xe))
                    );
 
-  leds[XY(ix, iy, true, true)] += c00;    // all was true, false
-  leds[XY(ix, iy + 1, true, true)] += c01;
-  leds[XY(ix + 1, iy, true, true)] += c10;
-  leds[XY(ix + 1, iy + 1, true, true)] += c11;
+  leds[XY(ix, iy)] += c00;    // all was true, false
+  leds[XY(ix, iy + 1)] += c01;
+  leds[XY(ix + 1, iy)] += c10;
+  leds[XY(ix + 1, iy + 1)] += c11;
 }
 
 void Dot::Move() {
