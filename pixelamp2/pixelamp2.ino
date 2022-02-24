@@ -46,70 +46,46 @@ const uint8_t kMatrixHeight = 8;
 uint8_t CentreX =  (kMatrixWidth / 2) - 1;
 uint8_t CentreY = (kMatrixHeight / 2) - 1;
 
-uint8_t brightness = 1;
-uint32_t currentEffect = 0;
+uint16_t brightness = 1;
+uint16_t currentEffect = 0;
 
 CRGB leds[NUM_LEDS];
 
 /*********************************************************************************************************
- * Firework Effect data
+ * MAIN
  */
-CRGB overrun;
-saccum78 gGravity = 10;
-fract8  gBounce = 200;
-fract8  gDrag = 255;
-bool gSkyburst = 0;
-accum88 gBurstx;
-accum88 gBursty;
-saccum78 gBurstxv;
-saccum78 gBurstyv;
-CRGB gBurstcolor;
-Dot gDot;
-Dot gSparks[NUM_SPARKS];
 
-/*********************************************************************************************************
- * Firepit Effect data
- */
-uint32_t x;
-uint32_t y;
-uint32_t z;
-uint32_t scale_x;
-uint32_t scale_y;
-uint8_t noise[16][8];
-// heatmap data with the size matrix kMatrixWidth * kMatrixHeight
-uint8_t heat[128];
-CRGBPalette16 Pal;
+#define SERIAL_DEBUG
 
-/*********************************************************************************************************
- * Effects list
- */
 void (*effects[])() = {
   xyTester,               //#0
   hueRotationEffect,      //#1
 #ifdef PACMAN
   animatePacChase,       //#2, pink
   animatePacman,
-#else
-  nothing,
-  nothing,
 #endif
   hue,
   fireworks,
   firepit,
-  firepit
+  nothing
 };
 
+#ifdef SERIAL_DEBUG
+char opcode = 0;
+#endif
 
 void setup() {
+#ifdef SERIAL_DEBUG
   Serial.begin(115200);
   //Serial.println(F("Hello c'est imposant"));
+#endif
 
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(Halogen);
   FastLED.setBrightness(brightness);
   FastLED.setDither(DISABLE_DITHER);
 
   // copier la palette de flash vers RAM
-  Pal = LavaColors_p;
+  // Pal = LavaColors_p;
   // ce n'est pas trivial : cf colorutils.h de FastLED
   // CRGBPalette16& operator=( const TProgmemRGBPalette16& rhs)
 
@@ -117,46 +93,76 @@ void setup() {
 
 void loop() {
   effects[currentEffect]();
-
   changeAnimation();
   changeBrightness();
+#ifdef SERIAL_DEBUG
+  int c = Serial.read();
+  if  ( c > ' ' ) {   // N.B. le serial monitor envoie des fins de ligne !
+      opcode = c;
+      Serial.print("opcode "); Serial.println( (char)opcode ); 
+      }
+#endif
 }
 
-/*********************************************************************************************************
- * Controls
- */
-void changeAnimation() {
-  static int oldValue = currentEffect;
-  int potValue = analogRead(POT_ANIM);
-  potValue = constrain(potValue, POT_ANIM_MIN, POT_ANIM_MAX);
-  int newValue = map(potValue, POT_ANIM_MIN, POT_ANIM_MAX, 0, ARRAY_SIZE(effects)-1);
+ /************************************************************************
+ * Controls                                                             *
+ ************************************************************************/
+ // les MIN et MAX sont surtout utiles si on a des potentiometres type joystick
+ // qui n'utilisent pas la pleine course...
+#define POT_ANIM              A1
+#define POT_ANIM_MIN          24
+#define POT_ANIM_MAX          1000
+#define POT_BRIGHTNESS        A0
+#define POT_BRIGHTNESS_MIN    200   // potentiometre de Pi defectueux
+#define POT_BRIGHTNESS_MAX    1000
+#define MAX_BRIGHTNESS        150
+#define HYSTERESIS            9
 
-  if (newValue != oldValue) {
-    oldValue = newValue;
-    currentEffect = newValue;
-    wipeMatrices();
-    //if   ( currentEffect & 1 )
-    //     Pal = LavaColors_p;
-    //else Pal = OceanColors_p;
-    }
+void changeAnimation() {
+  static int oldout = 0;
+  int newin = analogRead( POT_ANIM );
+  int newout = oldout;
+  if  ( ( newin - oldout ) > HYSTERESIS )
+      newout = newin - HYSTERESIS;
+  if  ( ( newin - oldout ) < -HYSTERESIS )
+      newout = newin + HYSTERESIS;
+  if  ( newout != oldout ) {
+      oldout = newout;
+      uint16_t newEffect = constrain( newout, POT_ANIM_MIN, POT_ANIM_MAX );
+      newEffect = map( newEffect, POT_ANIM_MIN, POT_ANIM_MAX, 0, ARRAY_SIZE(effects) - 1 );
+      if  ( newEffect != currentEffect ) {
+          currentEffect = newEffect; wipeMatrices();
+          }
+#ifdef SERIAL_DEBUG
+      Serial.print("pot anim "); Serial.print( newin ); Serial.print( ' ' ); Serial.print( newout ); Serial.print(" -> anim "); Serial.println( currentEffect );
+#endif
+      }
 }
 
 void changeBrightness() {
-  static int oldValue = brightness;
-  int potValue = analogRead(POT_BRIGHTNESS);
-  potValue = constrain(potValue, POT_BRIGHTNESS_MIN, POT_BRIGHTNESS_MAX);
-  int newValue = map(potValue, POT_BRIGHTNESS_MIN, POT_BRIGHTNESS_MAX, 0, 255);
-
-  if (newValue != oldValue) {
-    oldValue = newValue;
-    brightness = newValue;
-    brightness = constrain(brightness, 0, MAX_BRIGHTNESS);
-    FastLED.setBrightness(brightness);
-  }
+  static int oldout = 0;
+  int newin = analogRead( POT_BRIGHTNESS );
+  int newout = oldout;
+  if  ( ( newin - oldout ) > HYSTERESIS )
+      newout = newin - HYSTERESIS;
+  if  ( ( newin - oldout ) < -HYSTERESIS )
+      newout = newin + HYSTERESIS;
+  if  ( newout != oldout ) {
+      oldout = newout;
+      brightness = constrain( newout, POT_BRIGHTNESS_MIN, POT_BRIGHTNESS_MAX );
+      brightness = map( brightness, POT_BRIGHTNESS_MIN, POT_BRIGHTNESS_MAX, 0, 255 );
+      // brightness = constrain( brightness, 0, MAX_BRIGHTNESS );
+#ifdef SERIAL_DEBUG
+      Serial.print("pot bright "); Serial.print( newin ); Serial.print( ' ' ); Serial.print( newout ); Serial.print(" -> bright "); Serial.println( brightness );
+#endif
+      FastLED.setBrightness(brightness);
+      }
 }
 
+
+
 /*********************************************************************************************************
- * Effects
+ * Spiral Effect
  */
 void xyTester() {
   static uint8_t x=0;
@@ -179,14 +185,9 @@ void xyTester() {
   }
 }
 
-void hueRotationEffect() {
-  uint32_t ms = millis();
-  int32_t yHueDelta32 = ((int32_t)cos16( ms * (27/1) ) * (350 / kMatrixWidth));
-  int32_t xHueDelta32 = ((int32_t)cos16( ms * (39/1) ) * (310 / kMatrixHeight));
-  DrawOneFrame( ms / 65536, yHueDelta32 / 32768, xHueDelta32 / 32768);
-  FastLED.show();
-}
-
+/*********************************************************************************************************
+ * Hue Rotation Effect
+ */
 void DrawOneFrame( byte startHue8, int8_t yHueDelta8, int8_t xHueDelta8) {
   byte lineStartHue = startHue8;
   for( byte y = 0; y < kMatrixHeight; y++) {
@@ -198,6 +199,18 @@ void DrawOneFrame( byte startHue8, int8_t yHueDelta8, int8_t xHueDelta8) {
     }
   }
 }
+
+void hueRotationEffect() {
+  uint32_t ms = millis();
+  int32_t yHueDelta32 = ((int32_t)cos16( ms * (27/1) ) * (350 / kMatrixWidth));
+  int32_t xHueDelta32 = ((int32_t)cos16( ms * (39/1) ) * (310 / kMatrixHeight));
+  DrawOneFrame( ms / 65536, yHueDelta32 / 32768, xHueDelta32 / 32768);
+  FastLED.show();
+}
+
+/*********************************************************************************************************
+ * PACMAN Effects
+ */
 
 #ifdef PACMAN
 void animatePacChase() {  
@@ -243,6 +256,10 @@ void animatePacman() {
 }
 #endif
 
+/*********************************************************************************************************
+ * Hue Effect
+ */
+
 void hue() { 
   static uint8_t hue = 0;
   for(uint8_t y=0; y<kMatrixWidth; y++) {
@@ -252,6 +269,22 @@ void hue() {
   FastLED.show();
   hue++;
 }
+
+/*********************************************************************************************************
+ * Firework Effect
+ */
+CRGB overrun;
+saccum78 gGravity = 10;
+fract8  gBounce = 200;
+fract8  gDrag = 255;
+bool gSkyburst = 0;
+accum88 gBurstx;
+accum88 gBursty;
+saccum78 gBurstxv;
+saccum78 gBurstyv;
+CRGB gBurstcolor;
+Dot gDot;
+Dot gSparks[NUM_SPARKS];
 
 void fireworks() {
   random16_add_entropy( random() );
@@ -298,6 +331,19 @@ void fireworks() {
 
   FastLED.delay(10);
 }
+
+/*********************************************************************************************************
+ * Firepit Effect
+ */
+uint32_t x;
+uint32_t y;
+uint32_t z;
+uint32_t scale_x;
+uint32_t scale_y;
+uint8_t noise[16][8];
+// heatmap data with the size matrix kMatrixWidth * kMatrixHeight
+uint8_t heat[128];
+CRGBPalette16 Pal = LavaColors_p;
 
 void firepit() {
   // get one noise value out of a moving noise space
@@ -396,11 +442,24 @@ void firepit() {
   // If you change the framerate here you need to adjust the
   // y speed and the dim divisor, too.
   FastLED.delay(10);
-
 }
 
 void nothing() {
-  wipeMatrices(); FastLED.show();
+#ifdef SERIAL_DEBUG
+  CRGB common_rgb;      // test de toutes les LEDS
+  switch (opcode) {
+    case 'r' : common_rgb = CRGB( 255,0,0 ); break;
+    case 'g' : common_rgb = CRGB( 0,255,0 ); break;
+    case 'b' : common_rgb = CRGB( 0,0,255 ); break;
+    default  : common_rgb = CRGB( 255, 255, 255 );
+    }
+  for ( uint16_t n=0; n<NUM_LEDS; n++ ) {
+      leds[n] = common_rgb;
+  }
+#else
+  wipeMatrices();
+#endif
+  FastLED.show();
 }
 
 

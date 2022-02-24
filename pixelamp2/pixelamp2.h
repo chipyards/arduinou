@@ -35,23 +35,11 @@ template <uint32_t N> struct Sprite {
 };
 
 /************************************************************************
- * Controls                                                             *
- ************************************************************************/
-#define POT_ANIM              A1
-#define POT_ANIM_MIN          200
-#define POT_ANIM_MAX          800
-#define POT_BRIGHTNESS        A0
-#define POT_BRIGHTNESS_MIN    200
-#define POT_BRIGHTNESS_MAX    800
-#define MAX_BRIGHTNESS        150
-
-/************************************************************************
  * Animations                                                           *
  ************************************************************************/
 #define PACMAN
 void xyTester();
 void hueRotationEffect();
-void DrawOneFrame( byte startHue8, int8_t yHueDelta8, int8_t xHueDelta8);
 void animatePacChase();
 void animatePacman();
 void hue();
@@ -62,7 +50,7 @@ void nothing();
 /************************************************************************
  * Helper functions                                                     *
  ************************************************************************/
-uint16_t XY(uint8_t x, uint8_t y, bool wrapX, bool wrapY);
+uint16_t XY(uint8_t x, uint8_t y);
 template <uint32_t N> void showSprite(const Sprite<N> &sprite);
 template <uint32_t N> void moveSprite(Sprite<N> &sprite);
 void wipeMatrices();
