@@ -55,7 +55,7 @@ CRGB leds[NUM_LEDS];
  * MAIN
  */
 
-#define SERIAL_DEBUG
+// #define SERIAL_DEBUG
 
 // table de fonctions
 void (*effects[])() = {
@@ -66,8 +66,13 @@ void (*effects[])() = {
   hue,
   fireworks,
   firepit,
-  nothing
+  //nothing
+  theMatrix,
+  TeslaRings,
+  concentric
+  //nothing
 };
+
 // table de brightness max
 uint8_t lumax[] = {
   133,
@@ -77,7 +82,9 @@ uint8_t lumax[] = {
   133,
   126,
   255,
-  255,
+  160,
+  200,
+  200
 };
 
 #ifdef SERIAL_DEBUG
@@ -195,6 +202,200 @@ void xyTester() {
     wipeMatrices();
   }
 }
+
+/*********************************************************************************************************
+ * Concentric Effect
+ */
+#define CQ 5
+
+class cring { public:
+  CRGB ccolor;
+  uint8_t radius;
+  uint8_t period; // en ticks
+  uint16_t next;  // en ticks
+  static uint16_t ticks;
+  cring() {  ticks = 0; spawn( 0 ); };
+  void spawn( uint8_t newr ) {
+    ccolor = CHSV( random(70), 155 + random(100), 255 );
+    radius = newr;
+    period = 1; // en ticks
+    next = ticks + 8 + random(12); 
+    }
+  void cstep( bool dir );
+  void qset( uint8_t u, uint8_t v, CRGB c );
+  void cset( CRGB c );
+};  // class cring
+
+cring crings[CQ];
+uint16_t cring::ticks;
+
+// trace d'un quadruple pixel, u de 1 a 8, v de 1 a 4
+void cring::qset( uint8_t u, uint8_t v, CRGB c ) {
+  leds[XY( 7 + u, 4 - v )] = c;
+  leds[XY( 8 - u, 3 + v )] = c;
+  leds[XY( 7 + u, 3 + v )] = c;
+  leds[XY( 8 - u, 4 - v )] = c;
+}
+
+// trace d'un ring
+void cring::cset( CRGB c ) {
+  switch( radius) {
+    case 1: qset( 1, 1, c ); break;
+    case 2: qset( 1, 2, c ); qset( 2, 1, c ); break;
+    case 3: qset( 1, 3, c ); qset( 3, 1, c ); qset( 2, 3, c ); qset( 3, 2, c ); break;
+    case 4: qset( 1, 4, c ); qset( 2, 4, c ); qset( 3, 4, c );
+            qset( 4, 1, c ); qset( 4, 2, c ); qset( 4, 3, c ); break;
+    case 5: qset( 8, 4, c ); qset( 7, 4, c ); qset( 6, 4, c );
+            qset( 5, 1, c ); qset( 5, 2, c ); qset( 5, 3, c ); break;
+    case 6: qset( 8, 3, c ); qset( 6, 1, c ); qset( 7, 3, c ); qset( 6, 2, c ); break;
+    case 7: qset( 8, 2, c ); qset( 7, 1, c ); break;
+    case 8: qset( 8, 1, c ); break;
+    
+    }
+}
+
+// N.B. radius va de 1 a 8
+// spawn met radius = 0 ==> prochain affichage a 1
+void cring::cstep( bool dir ) {
+  if  ( ticks >= next ) {
+      if  ( dir )
+          {
+          if  ( radius > 0 ) {   // effacer ancienne position
+              cset( CRGB::Black );
+              }
+          if  ( radius < 8 ) {
+              radius++;
+              next = ticks + period;
+              cset( ccolor );
+              }
+          else spawn( 0 );
+          }
+      else {
+          if  ( radius < 8 ) {   // effacer ancienne position
+              cset( CRGB::Black );
+              }
+          if  ( radius > 0 ) {
+              radius--;
+              next = ticks + period;
+              cset( ccolor );
+              }
+          else spawn( 8 );
+          }
+      }
+}
+
+void concentric() {
+  for ( uint8_t i = 0; i < CQ; ++i ) {
+      crings[i].cstep( cring::ticks & 128 );
+  }
+  ++ cring::ticks;
+  FastLED.show();
+  FastLED.delay(70);
+}
+/*********************************************************************************************************
+ * Tesla Rings Effect
+ */
+#define TQ 5
+
+class tring { public:
+  CRGB tcolor;
+  uint8_t y;
+  uint8_t period; // en ticks
+  uint16_t next;  // en ticks
+  static uint16_t ticks;
+  tring() {  ticks = 0; spawn(); };
+  void spawn() {
+    tcolor = CHSV( 130 + random(70), 155 + random(100), 255 );
+    y = kMatrixHeight;
+    period = 2 + random(5); // en ticks
+    next = ticks + 25 + random(50); 
+    }
+  void tstep();
+};  // class tring
+
+tring rings[TQ];
+uint16_t tring::ticks;
+
+// N.B. spawn met y = kMatrixHeight ==> prochain affichage a kMatrixHeight-1
+void tring::tstep() {
+  if  ( ticks >= next ) {
+      if  ( y < kMatrixHeight ) {   // effacer ancienne position
+          for ( uint8_t x = 0; x < kMatrixWidth; ++x )
+              leds[XY( x, y )] = CRGB::Black;
+          }
+      if  ( y > 0 ) {
+          y--;
+          next = ticks + period;
+          for ( uint8_t x = 0; x < kMatrixWidth; ++x )
+              leds[XY( x, y )] = tcolor;
+          }
+      else spawn();
+      }
+}
+
+void TeslaRings() {
+  for ( uint8_t i = 0; i < TQ; ++i ) {
+      rings[i].tstep();
+  }
+  ++ tring::ticks;
+  FastLED.show();
+  FastLED.delay(20);
+}
+
+/*********************************************************************************************************
+ * The Matrix Effect
+ */
+#define MQ 12
+#define MPIXELS 6
+
+CRGB mpal[MPIXELS] = { CRGB(0,128,32), CRGB(0,100,0), CRGB(0,50,0), CRGB(0,25,0), CRGB(0,12,0), CRGB(0,0,0) };
+
+class comet { public:
+  CRGB * pal;
+  uint8_t x;
+  uint8_t y;
+  uint8_t period; // en ticks
+  uint16_t next;  // en ticks
+  static uint16_t ticks;
+  comet() {  ticks = 0; spawn(); };
+  void spawn() {
+    pal = mpal;
+    x = random( kMatrixWidth );
+    y = 0;
+    period = 2 + random(5); // en ticks
+    next = ticks + period; 
+    };
+  void mstep();
+  };  // class comet
+
+comet mcomets[MQ];
+uint16_t comet::ticks;
+
+void comet::mstep() {
+if  ( ticks >= next ) {
+    y++;
+    if  ( y > kMatrixHeight + MPIXELS )
+        spawn();
+    else next = ticks + period;
+    uint8_t yy;
+    for ( uint8_t i = 0; ( ( i < MPIXELS ) && ( i <= y ) ); ++i ) {
+        yy = y - i;
+        if  ( yy < kMatrixHeight )
+            leds[XY( x, yy )] = pal[i];
+        }
+    }
+}
+
+
+void theMatrix() {
+  for ( uint8_t i = 0; i < MQ; ++i ) {
+      mcomets[i].mstep();
+  }
+  ++ comet::ticks;
+  FastLED.show();
+  FastLED.delay(20);
+}
+
 
 /*********************************************************************************************************
  * Hue Rotation Effect
@@ -578,7 +779,7 @@ void Dot::Draw() {
                    dim8_video( scale8( scale8( color.b, ye), xe))
                    );
 
-  leds[XY(ix, iy)] += c00;    // all was true, false
+  leds[XY(ix, iy)] += c00;
   leds[XY(ix, iy + 1)] += c01;
   leds[XY(ix + 1, iy)] += c10;
   leds[XY(ix + 1, iy + 1)] += c11;
@@ -619,9 +820,9 @@ void Dot::Move() {
     if( theType == SHELL ) {
 
       if( (y > (uint16_t)(0x8000)) /*&& (random8() < 64)*/) {
-        // boom
-        LEDS.showColor( CRGB::White);
-        //FastLED.delay( 1);
+        // boom = Set all leds to the given color
+        LEDS.showColor( CRGB( 91, 91, 91 ) );	// 91 * (140/255) = 50 white max pour 1A
+        FastLED.delay(15);
         LEDS.showColor( CRGB::Black);
       }
 

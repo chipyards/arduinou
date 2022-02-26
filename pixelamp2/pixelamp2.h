@@ -45,6 +45,9 @@ void animatePacman();
 void hue();
 void fireworks();
 void firepit();
+void theMatrix();
+void TeslaRings();
+void concentric();
 void nothing();
 
 /************************************************************************
