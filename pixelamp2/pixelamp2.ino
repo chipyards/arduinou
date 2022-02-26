@@ -57,17 +57,27 @@ CRGB leds[NUM_LEDS];
 
 #define SERIAL_DEBUG
 
+// table de fonctions
 void (*effects[])() = {
   xyTester,               //#0
   hueRotationEffect,      //#1
-#ifdef PACMAN
   animatePacChase,       //#2, pink
   animatePacman,
-#endif
   hue,
   fireworks,
   firepit,
   nothing
+};
+// table de brightness max
+uint8_t lumax[] = {
+  133,
+  138,
+  99,
+  99,
+  133,
+  126,
+  255,
+  255,
 };
 
 #ifdef SERIAL_DEBUG
@@ -94,7 +104,7 @@ void setup() {
 void loop() {
   effects[currentEffect]();
   changeAnimation();
-  changeBrightness();
+  changeBrightness( false );
 #ifdef SERIAL_DEBUG
   int c = Serial.read();
   if  ( c > ' ' ) {   // N.B. le serial monitor envoie des fins de ligne !
@@ -131,7 +141,9 @@ void changeAnimation() {
       uint16_t newEffect = constrain( newout, POT_ANIM_MIN, POT_ANIM_MAX );
       newEffect = map( newEffect, POT_ANIM_MIN, POT_ANIM_MAX, 0, ARRAY_SIZE(effects) - 1 );
       if  ( newEffect != currentEffect ) {
-          currentEffect = newEffect; wipeMatrices();
+          currentEffect = newEffect;
+          wipeMatrices();
+          changeBrightness( true ); // pour forcer un mapping avec la nouvelle valeur max
           }
 #ifdef SERIAL_DEBUG
       Serial.print("pot anim "); Serial.print( newin ); Serial.print( ' ' ); Serial.print( newout ); Serial.print(" -> anim "); Serial.println( currentEffect );
@@ -139,7 +151,7 @@ void changeAnimation() {
       }
 }
 
-void changeBrightness() {
+void changeBrightness( bool force ) {
   static int oldout = 0;
   int newin = analogRead( POT_BRIGHTNESS );
   int newout = oldout;
@@ -147,11 +159,10 @@ void changeBrightness() {
       newout = newin - HYSTERESIS;
   if  ( ( newin - oldout ) < -HYSTERESIS )
       newout = newin + HYSTERESIS;
-  if  ( newout != oldout ) {
+  if  ( ( newout != oldout ) || force ) {
       oldout = newout;
       brightness = constrain( newout, POT_BRIGHTNESS_MIN, POT_BRIGHTNESS_MAX );
-      brightness = map( brightness, POT_BRIGHTNESS_MIN, POT_BRIGHTNESS_MAX, 0, 255 );
-      // brightness = constrain( brightness, 0, MAX_BRIGHTNESS );
+      brightness = map( brightness, POT_BRIGHTNESS_MIN, POT_BRIGHTNESS_MAX, 0, lumax[currentEffect] );
 #ifdef SERIAL_DEBUG
       Serial.print("pot bright "); Serial.print( newin ); Serial.print( ' ' ); Serial.print( newout ); Serial.print(" -> bright "); Serial.println( brightness );
 #endif
@@ -212,7 +223,6 @@ void hueRotationEffect() {
  * PACMAN Effects
  */
 
-#ifdef PACMAN
 void animatePacChase() {  
   static boolean openMouth = true;
   
@@ -254,7 +264,6 @@ void animatePacman() {
   moveSprite(pacmanOpenMouth);
   moveSprite(pacmanClosedMouth);
 }
-#endif
 
 /*********************************************************************************************************
  * Hue Effect
@@ -451,7 +460,8 @@ void nothing() {
     case 'r' : common_rgb = CRGB( 255,0,0 ); break;
     case 'g' : common_rgb = CRGB( 0,255,0 ); break;
     case 'b' : common_rgb = CRGB( 0,0,255 ); break;
-    default  : common_rgb = CRGB( 255, 255, 255 );
+    case 'w' : common_rgb = CRGB( 255, 255, 255 ); break;
+    default  : common_rgb = CRGB( 50, 50, 50 );
     }
   for ( uint16_t n=0; n<NUM_LEDS; n++ ) {
       leds[n] = common_rgb;

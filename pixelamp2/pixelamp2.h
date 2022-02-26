@@ -37,7 +37,7 @@ template <uint32_t N> struct Sprite {
 /************************************************************************
  * Animations                                                           *
  ************************************************************************/
-#define PACMAN
+
 void xyTester();
 void hueRotationEffect();
 void animatePacChase();
@@ -77,7 +77,7 @@ public:
   void Skyburst( accum88 basex, accum88 basey, saccum78 basedv, CRGB& basecolor);
 };
 
-#ifdef PACMAN
+
 struct Sprite<72> pacmanOpenMouth = {
   9, 8,
   8, 0,
@@ -235,6 +235,5 @@ struct Sprite<64> testSprite = {
   }
 };
 */
-#endif
 
 #endif
