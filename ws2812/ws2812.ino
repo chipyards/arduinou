@@ -33,12 +33,13 @@ https://github.com/FastLED/FastLED/wiki/Overview
    - Comment FastLED sait-il sur quelle plateforme on est ?
      Dans platforms.h il evalue differents macros:
 	- AVR c'est le choix par defaut !
-	- STM32 si STM32F10X_MD ou __STM32F1__ ou STM32F2XX (c'est bon pour le F103)
+	- STM32 si STM32F10X_MD ou __STM32F1__ ou STM32F2XX (serait bon pour le F103)
  */
 
 /* notes sur l'implementation STM32 (cortex M3) clockless_arm_stm32.h
 	- mesure le temps au moyen du registre DWT_CYCCNT du "Data Watchpoint and Trace Unit"
 	  qui se trouve a l'adresse 0xE0001004
+   mais la compilation de la lib FastLED avec Atollic True Studio echoue (pb de STL, trop complique)
 */
 
 /* note sur le signal vu a l'oscillo a la sortie de l'AVR:
@@ -48,8 +49,29 @@ https://github.com/FastLED/FastLED/wiki/Overview
    a la sortie d'une des LEDs:
    - pulse courte 315ns (la spec dit 400ns +- 150, on est bon )
    - pulse longue 660ns (la spec dit 850ns +- 150, on est bon )
-   
  */
+
+/* notes sur la commande des LEDs :
+   - il y a une regulation de courant analog, assez lâche :
+	- pour une baisse de voltage de 10% (de 5V a 4.5V) la conso baisse de 5%
+	- pour une baisse de voltage de 20% (de 5V a 4V), la conso baisse de 9%
+     (mesure sur 1 seule LED parmi RGB)
+   - la commande d'intensite lumineuse est par PWM, linéaire,
+	- frequence d'env. 4 kHz, résolution env. 1 us
+	- non synchonisee avec le stream de commande ni avec les LEDs voisines
+   - la spec de conso nominale est vague : 20 mA par LED pour WS2812, pas de spec pour WS2812B
+     mesures sur la lampe Pi (128 LEDs), en mA par LED :
+	VDD, PW		R		G		B		W
+	5V, 0%		-		-		-		0.73
+	5V, 25%		3.82		3.64		3.45		9.06
+	4V, 0%		-		-		-		0.41
+	4V, 25%		3.50		3.30		3.13
+	4V, 50%		6.56		6.25		5.81
+	4V, 100%	12.7		12.03		11.18
+     Aussi bas que 3.5V un fonctionnement normal est obtenu.
+     En white pur on a mesure moins que la somme des consos R, G, B (a elucider)
+ */
+
 #include <FastLED.h>
 
 #define NUM_LEDS 4
