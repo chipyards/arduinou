@@ -5,13 +5,15 @@
 #define PWMPIN 9
 
 int period = 20;
-int gain = 1;
+int pgain = 1;
+int igain = 4;
+bool close = false;
 
 void setup() {
 pinMode( BUTPIN, INPUT_PULLUP );
 pinMode( LEDPIN, OUTPUT );
 Serial.begin( 115200 );
-Serial.println("min max analog_in pwm_return");
+Serial.println("min max potentiometer phototransistor");
 }
 
 void loop() {
@@ -25,29 +27,38 @@ if  ( tloop == 0 )
     tloop = millis();
 tloop += period;
 
+
+
+
   // analog processing
   int pot = analogRead( ADCPIN );
   int optical_return = 1023 - analogRead( ADCPWM );
+  static int integrator = 0;
+  int diff;
 
-  /* open loop *
-  analogWrite( PWMPIN, pot / 4 );
-  //*/
-  /* closed loop */
-  int diff = pot - optical_return;
-  static long accumulator = 0;
-  accumulator += diff;
-  if  ( accumulator > 10000 ) accumulator = 10000; 
-  if  ( accumulator < -10000 ) accumulator = -10000; 
-  diff *= gain;
-  diff += accumulator;
-  if  ( diff > 255 ) diff = 255;
-  if  ( diff < 0 ) diff = 0;
-  analogWrite( PWMPIN, diff );
-  //*/
+  // servo loop control
+  if  ( close ) {
+      // closed loop operation
+      diff = pot - optical_return;
+      integrator += diff;
+      if  ( integrator > 10000 ) integrator = 10000; 
+      if  ( integrator < -10000 ) integrator = -10000; 
+      diff *= pgain;
+      diff += ( integrator / igain );
+      diff += ( pot/4 );
+      if  ( diff > 255 ) diff = 255;
+      if  ( diff < 0 ) diff = 0;
+      analogWrite( PWMPIN, diff );
+  } else {
+      // open loop operation
+      analogWrite( PWMPIN, pot / 4 );
+  }
+
+
 
   
   // toggle button
-  static bool plotting = false;
+  static bool plotting = true;
   static bool oldbutton = true;
   bool newbutton = digitalRead( BUTPIN );
   if ( newbutton != oldbutton )  {
@@ -58,10 +69,6 @@ tloop += period;
               long total_time = millis() - start_time;
               float ftotal = (float)total_time;
               float fperiod = ftotal / (float)loop_count;
-              //Serial.print("total="); 
-              //Serial.print( total_time );
-              //Serial.print("ms_count=");
-              //Serial.println(loop_count);
               Serial.print("actual_period=");
               Serial.print(fperiod);
               Serial.print("_vs_");
@@ -79,20 +86,20 @@ tloop += period;
 // remote control from the PC
 if  ( Serial.available() ) {
   char c = Serial.read();
-  if  ( c == 'T' )  {
-      period = Serial.parseInt();
-  }          
-  if  ( c == 'g' )  {
-      gain = Serial.parseInt();
-  }          
+  if  ( c == 'T' )  { period = Serial.parseInt(); }          
+  if  ( c == 'g' )  { pgain = Serial.parseInt(); }          
+  if  ( c == 'i' )  { igain = Serial.parseInt(); }
+  if  ( c == 'c' )  { close = true; }
+  if  ( c == 'o' )  { close = false; }
 }
   
     // plotting process
     if  ( plotting ) {
       Serial.print( "0 1023 " );
       Serial.print( pot );
-      Serial.print( " " );
-      Serial.println( optical_return );
+      Serial.print( " " );  Serial.print( optical_return );
+      // Serial.print( " " );  Serial.print( diff );
+      Serial.println();
     }
     loop_count++;
 

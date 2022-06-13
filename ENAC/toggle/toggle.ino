@@ -1,24 +1,22 @@
 void setup() {
-pinMode( 2, INPUT_PULLUP );
-pinMode( 13, OUTPUT );
+pinMode( 2, INPUT_PULLUP ); // pushbutton wired to ground
+pinMode( 13, OUTPUT );      // board LED
 digitalWrite( 13, 0 );
-Serial.begin( 9600 );
 }
 
 void loop() {
-  int pot = analogRead( 0 );
   static bool oldbut = false;
-  static bool plotting = false;
+  static bool toggle = false;
   bool newbut = digitalRead( 2 );
   if  ( ( newbut != oldbut ) && ( newbut ) ) {
-      if  ( plotting ) {
-          plotting = false;
+      if  ( toggle ) {
+          toggle = false;
       } else {
-          plotting = true;
+          toggle = true;
       }
   }
 oldbut = newbut;
-digitalWrite( 13, plotting );
+digitalWrite( 13, toggle );
 
 delay( 30 );
 }
