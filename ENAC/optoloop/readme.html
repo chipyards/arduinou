@@ -1,0 +1,76 @@
+<pre>video link :
+<a href="https://youtu.be/-LlhZCc0B6U">https://youtu.be/-LlhZCc0B6U</a>
+
+
+THE OPTO-LOOP EXPERIMENT
+
+- The goal is to regulate the light intensity
+  received by the phototransistor on the right side.
+
+- The desired intensity is set by a potentiometer 
+  connected to an analog input of the Arduino.
+
+- The LED is controlled by a PWM output of the 
+  Arduino.
+
+- The phototransistor is connected to another analog 
+  input, through a low-pass filter with a 100 ms time
+  constant (1MOhm*0.1uF) in order to remove the PWM ripple.
+
+OPEN LOOP MODE
+
+- The PWM output is driven by the value set by 
+  potentiometer, scaled by 1/4 to compensate the resolution
+  difference between the ADC (10 bits) and the PWM (8 bits)
+
+- the phototransistor signal is used just for 
+  display, it is inverted to show the same polarity as the
+  set value.
+
+- the control is not accurate and is sensitive to 
+  external disturbances like external light or optical obstacle 
+
+ClOSED LOOP ( PROPORTIONAL )
+
+- the signed error term is added to the PWM control,
+  with a loop gain of 4.
+  The accuracy is moderatly improved.
+
+- any attempt to increase the gain leads to 
+  instability 
+
+ClOSED LOOP ( PROPORTIONAL+INTEGRAL )
+
+- the error value is fed to an integrator, the 
+  output of which is added to the PW control
+
+- the accuracy is greatly improved as well as the 
+  immunity against external disturbances
+
+- the response speed could be improved by adding a 
+  derivate term (PID control)
+
+WIRING DETAILS
+
+- the wiper of the potentiometer is connected to
+  an analog input via a 220 Ohms resistor.
+
+- the white LED is connected to a PWM output via a 560 Ohms resistor
+
+- the NPN phototransistor emitter is connected to the ground,
+  its collector is pulled up to +5V by a 4.7k resistor
+
+- the phototransistor collector is connected to an analog input
+  through a RC low-pass filter (1Mohm * 0.1 uF)
+
+SOFTWARE DETAILS
+
+- the program sends data to the arduino serial plotter on 4 channels,
+  channels min and max are used only to freeze the vertical scale
+
+- the program accepts commands from the PC via the input field of
+  the serial plotter. These commands are used to :
+	- switch between open-loop and closed-loop modes
+	- adjust parameters like proportional gain, integral gain,
+	  sampling period etc...
+</pre>

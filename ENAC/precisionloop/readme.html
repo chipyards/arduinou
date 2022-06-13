@@ -1,0 +1,36 @@
+<pre>
+Goal : take control over the arduino in order to:
+acquire and process analog information with an accurate sample rate
+
+1) using the potentiometer as a signal source,
+send the data to the serial plotter,
+	- 1st channel constant value = 0
+	- 2nd channel constant value = full scale = 1023
+	- 3rd channel : raw ADC value
+using delay() to determine the sampling period
+
+2) use the push button to start and stop the plotting process
+connect the button to a digital input configured as INPUT_PULLUP
+(toggle action : press shortly to start, again to stop)
+
+3) store the period value in a variable, allow the user to change its value
+by typing a message like "T 35", where 'T' is a code identifying the variable.
+
+4) setup a measurement of the actual loop period, assuming that millis() is accurate
+	- use 2 static long variables, one for keeping the start time,
+	  the other to count the loops
+	- start the measurement when plotting is started,
+	  stop the measurement when plotting is stopped, then send
+	  the results to the plotter in one line of text (with no space)
+
+5) replace the call to delay() by an accurate solution: a loop waiting
+for millis to reach a precalculated date,
+compare the accuracy
+
+Note : using the accurate loop solution together with the maximum bit rate of
+115200 bauds for the serial link to the PC allows to reduce the loop period
+down to 1ms.
+Note: Using the serial monitor in parallel with the seriel plotter is not possible.
+But sending one word of text (not a number, and containg no space nor comma)
+to the plotter replaces the first label, without other effect. 
+</pre>

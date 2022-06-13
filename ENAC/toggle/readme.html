@@ -1,0 +1,23 @@
+<pre>
+Toggle button : press shortly to start, press again to stop.
+
+A simple push button can be operated as a toggle button by software.
+This requires 2 static boolean variables :
+	- button previous state
+	- toggle state
+
+         press          _________                   ______
+button : idle__________|         |_________________|      |_________
+                          _________                   ______
+previous button state____|         |_________________|      |_______
+                        _         _                 _      _
+button change__________| |_______| |_______________| |____| |_______
+                        _                           _
+change && pressed______| |_________________________| |______________
+                        ___________________________
+toggle output__________|                           |________________
+
+Note: on this diagram, the button pressed state is represented as "high".
+In the program example, the button, being connected to ground and pulled up
+by a resistor, works inverted. This is compensated by the software.
+</pre>
