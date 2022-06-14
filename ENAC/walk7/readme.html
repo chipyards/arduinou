@@ -1,0 +1,40 @@
+<pre>
+PARSING THE NMEA SENTENCES
+
+NMEA sentences do not follow any generic text data format like XML, JSON OR CSV.
+They use a propietary format which is neither human fiendly nor machine-friendly
+
+$GPGGA,133449.000,4332.7181,N,00129.2813,E,1,7,1.32,136.0,M,50.4,M,,*5D
+
+Possible approaches :
+
+1) multiples passes, could be:
+	- copy each sentence in a separate buffer
+	- split each sentence into fields and store these in arrays of buffers (or 2D arrays)
+	- identify each sentence by the first field
+	- extract values from the other fields
+
+2) pattern search
+	- using a standard pattern search library like "regular expressions", extract only
+	  the field of interest
+	- extract the value from this field
+   this is efficient only if a small fraction of the data is to be extracted
+
+3) single pass real time parsing based on the FSM (Finite State Machine)
+	- each character is processed entirely as soon as it is available 
+	- a single loop contains the reception of each character and its full processing.
+	- variables are used to store the "state" of the machine, which tells "what to do next"
+
+4) single pass real time FSM hybrid approach
+	- some actions may be delayed, for example character of a numerical field may be stored
+	  in a temporary buffer, to be parsed by a standard number parsing function
+	  like atoi() or strtod()
+
+FINITE STATE MACHINE
+	- in an ordinary program or algorithm, the current sate of the work is stored in
+		- the current position in the execution flow (implicitly stored by the CPU)
+		- explicit variables
+	- in the FSM, the state is stored only in variables, in an explicit manner, stating
+		- what is currently being done
+		- what the job status is
+		- where you are in the data structure

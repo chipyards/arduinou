@@ -1,6 +1,6 @@
 /*
- * walkGPS stage 7 : regression : un template de FSM base sur la demo standalone de walk6
- * 
+ * NMEA sentences parser, based on a Finite State Machine
+ * This is a template, you have to fill the blanks (...)
  */
 
 // variables for remote control
@@ -41,8 +41,8 @@ int ichar = 0;    // index of current char in fbuf[]
 char fbuf[20];    // buffer for current field
 
 // variables for storing the extracted values 
-double kspeed = 0;
-double useconds = 0;
+double kspeed = 0.0;
+double useconds = 0.0;
 int sats = 0;
 
 void conclusion();  // to be called by the FSM when sentence burst is finished
@@ -73,7 +73,7 @@ switch ( step ) {
             // process the end of field
             fbuf[ichar] = 0;  // string terminator
             // select each one of the relevant fields, according to sequence and ifield
-            // extract numerical values using atoi() or strtod()
+            // extract numerical values using atoi(fbuf) or strtod(fbuf,NULL)
             ...
             ifield++; ichar = 0;  // prepare for next field
         } else {
