@@ -74,7 +74,7 @@ https://github.com/FastLED/FastLED/wiki/Overview
 
 #include <FastLED.h>
 
-#define NUM_LEDS 4
+#define NUM_LEDS 5
 #define LED_PIN 6 // D6
 
 /// global storage ///
@@ -165,10 +165,11 @@ void loop() {
 // joystick
 joyproc();
 // LEDs
-   leds[0] = CHSV(paramX,paramY,255);
-   leds[1] = CHSV(paramX,paramY,192);
-   leds[2] = CHSV(paramX,paramY,128);
-   leds[3] = CHSV(paramX,paramY,64);
+   leds[0] = CHSV(paramX,paramY,64);
+   leds[1] = CHSV(paramX,paramY,128);
+   leds[2] = CHSV(paramX,paramY,192);
+   leds[3] = CHSV(paramX,paramY,255);
+   leds[4] = CHSV(paramX,paramY,255);
 FastLED.show();
 delay(loop_delay);        // approximate servo loop period (ms)
 }

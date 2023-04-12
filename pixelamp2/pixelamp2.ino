@@ -41,6 +41,10 @@ Commentaires des 8 effets:
 #include <FastLED.h>
 #include "pixelamp2.h"
 
+// options
+#define FIRST_LED_BURNT
+// #define SERIAL_DEBUG
+
 const uint8_t kMatrixWidth = 16;
 const uint8_t kMatrixHeight = 8;
 uint8_t CentreX =  (kMatrixWidth / 2) - 1;
@@ -50,23 +54,25 @@ uint16_t brightness = 1;
 uint16_t currentEffect = 0;
 
 CRGB leds[NUM_LEDS];
+#ifdef FIRST_LED_BURNT
+CRGB * leds_skip1 = leds + 1;  // pointeur pour sauter la premiere LED, dessoudee
+#endif
+
 
 /*********************************************************************************************************
  * MAIN
  */
 
-// #define SERIAL_DEBUG
 
 // table de fonctions
 void (*effects[])() = {
-  xyTester,               //#0
-  hueRotationEffect,      //#1
-  animatePacChase,       //#2, pink
+  xyTester,
+  hueRotationEffect,
+  animatePacChase,
   animatePacman,
   hue,
   fireworks,
   firepit,
-  //nothing
   theMatrix,
   TeslaRings,
   concentric
@@ -75,16 +81,16 @@ void (*effects[])() = {
 
 // table de brightness max
 uint8_t lumax[] = {
-  133,
-  138,
-  99,
-  99,
-  133,
-  126,
-  255,
-  160,
-  200,
-  200
+  60,   // 133,  // xyTester,         
+  62,   // 138,  // hueRotationEffect,
+  45,   // 99,   // animatePacChase,  
+  45,   // 99,   // animatePacman,
+  60,   // 133,  // hue,
+  90,   // 126,  // fireworks,
+  66,   // 255,  // firepit,
+  60,   // 160,  // theMatrix,
+  90,   // 200,  // TeslaRings,
+  90,   // 200   // concentric
 };
 
 #ifdef SERIAL_DEBUG
@@ -97,7 +103,12 @@ void setup() {
   //Serial.println(F("Hello c'est imposant"));
 #endif
 
+#ifdef FIRST_LED_BURNT
+  FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds_skip1, NUM_LEDS-1).setCorrection(Halogen);
+#else
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(Halogen);
+#endif
+
   FastLED.setBrightness(brightness);
   FastLED.setDither(DISABLE_DITHER);
 
@@ -187,10 +198,21 @@ void xyTester() {
   static uint8_t y=0;
   static uint8_t hue = 0;
   
+#ifdef SERIAL_DEBUG
+  CRGB common_rgb;
+  switch (opcode) {
+    case 'r' : common_rgb = CRGB( 255,0,0 ); break;
+    case 'g' : common_rgb = CRGB( 0,255,0 ); break;
+    case 'b' : common_rgb = CRGB( 0,0,255 ); break;
+    case 'w' : common_rgb = CRGB( 255, 255, 255 ); break;
+    default  : common_rgb = CRGB( 50, 50, 50 );
+    }
+  leds[XY(x, y)] = common_rgb;
+#else
   leds[XY(x, y)] = CHSV(hue, 255, 255);
+#endif
   FastLED.show();
   FastLED.delay(20);
-
   x++;
   if (x >= kMatrixWidth) {
     y++;
@@ -654,6 +676,7 @@ void firepit() {
   FastLED.delay(10);
 }
 
+/*
 void nothing() {
 #ifdef SERIAL_DEBUG
   CRGB common_rgb;      // test de toutes les LEDS
@@ -672,8 +695,7 @@ void nothing() {
 #endif
   FastLED.show();
 }
-
-
+*/
 /*********************************************************************************************************
  * Helping functions
  */
