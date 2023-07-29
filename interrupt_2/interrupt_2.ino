@@ -1,5 +1,19 @@
 // https://www.instructables.com/id/Arduino-Timer-Interrupts/
 
+/*
+timer prescaler summary :
+    CSn2:CSn0	-------	prescale ------
+		timer0	timer1	timer2
+	1	1	1	1
+	2	8	8	8
+	3	64	64	32
+	4	256	256	64
+	5	1024	1024	128
+	6			256
+	7			1024
+
+*/
+
 // set timer0 interrupt with 64 prescaler
 void timer0_init( unsigned char period ) {
   cli();    // stop interrupts

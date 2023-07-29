@@ -37,6 +37,19 @@ if  ( arun )
 else ticks += 1;
 }
 
+/*
+ADC prescaler summary :
+   ADPS2:ADPS0	prescale
+	0	2
+	1	2
+	2       4
+	3       8
+	4       16
+	5       32
+	6       64
+	7       128
+*/
+
 // set up continuous sampling of analog pin 0 with interrupt
 void adc_init() {
 cli();
